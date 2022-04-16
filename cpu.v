@@ -85,13 +85,13 @@ module add_carry(
 endmodule
 
 module machine(
+	input wire clk,
 	input wire en_read_external,
 	input wire [7:0] external_value,
 	output wire halted
 );
 	wire [7:0] bus;
 	wire [7:0] instr_bus; // intermediate bus for instructions for masking
-	wire clk;
 	wire [7:0] alu;
 	wire [15:0] micro;
 	wire [2:0] micro_counter;
@@ -116,7 +116,6 @@ module machine(
 	reg last_zero;
 	reg last_carry;
 
-	clock c(clk);
 	micro_instr_counter mc(clk, reset | micro_done, micro_counter);
 
 	register a(bus, clk, reset, en_write_a, en_read_a);
@@ -186,7 +185,8 @@ module tb_machine();
 	reg en_read_external = 0;
 	wire halted;
 
-	machine m(en_read_external, external_value, halted);
+	clock c(clk);
+	machine m(clk, en_read_external, external_value, halted);
 
 	initial begin
 		// "program" the RAM
@@ -194,7 +194,7 @@ module tb_machine();
 
 		// reset (RAM will be untouched)
 		m.reset <= 1;
-		#2; // 2 is a full cycle (pos+neg edge)
+		@(posedge clk);
 		m.reset <= 0;
 		$monitor("OUT ", m.out.value);
 
@@ -202,7 +202,7 @@ module tb_machine();
 			//if (m.micro_counter == 0)
 			//$display("%b  bus[%d]  a[%d]  b[%d]  out[%d]  pc[%d]  instr[%h:%h]  mc[%d]  micro[%b] z=%b c=%b", m.clk, m.bus, m.a.value, m.b.value, m.out.value, m.pc.value, m.instr.value[7:4], m.instr.value[3:0], m.micro_counter, m.micro, m.last_zero, m.last_carry);
 			if (halted) $finish();
-			#2;
+			@(posedge clk);
 		end
 		$finish();
 	end
