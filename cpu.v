@@ -1,7 +1,7 @@
 // an attempt to recreate Ben Eaters 8-bit computer in Verilog
 
 module register(
-	inout wire [7:0] bus,
+	input wire [7:0] bus,
 	input wire clk,
 	input wire reset,
 	input wire en_write,
@@ -10,15 +10,13 @@ module register(
 );
 	reg [7:0] value;
 
-	assign bus = en_read ? value : 'bz;
-
 	always @(posedge clk)
 		if (reset) value <= 0;
 		else if (en_write) value <= bus;
 endmodule
 
 module memory(
-	inout wire [7:0] bus,
+	input wire [7:0] bus,
 	input wire clk,
 	input wire reset,
 	input wire en_write_mem,
@@ -37,8 +35,6 @@ module memory(
 
 	always @(*)
 		if (en_read_mem) last_read <= data[address_register];
-
-	assign bus = en_read_mem ? last_read : 'bz;
 endmodule
 
 module rom(
@@ -90,7 +86,6 @@ module machine(
 	output wire halted
 );
 	wire [7:0] bus;
-	wire [7:0] instr_bus; // intermediate bus for instructions for masking
 	wire clk;
 	wire [7:0] alu;
 	wire [15:0] micro;
@@ -123,7 +118,7 @@ module machine(
 	register b(bus, clk, reset, en_write_b, 1'b0); // never read
 	register out(bus, clk, reset, en_write_out, 1'b0);
 	register pc(bus, clk, reset, en_write_pc, en_read_pc);
-	register instr(instr_bus, clk, reset, en_write_instr, en_read_instr);
+	register instr(bus, clk, reset, en_write_instr, en_read_instr);
 
 	memory m(bus, clk, reset, en_write_mem, en_read_mem, en_write_mem_adr);
 	rom instr_decode({ last_carry, last_zero, instr.value[7:4], micro_counter }, micro);
@@ -135,11 +130,13 @@ module machine(
 		alu,
 		carry_out);
 
-	assign bus = en_read_external ? external_value : 'bz;
-	assign bus = en_read_alu      ? alu            : 'bz;
-
-	assign bus = en_read_instr ? { 4'b0, bus[3:0] } : 'bz;
-	assign instr_bus = en_write_instr ? bus : 'bz;
+	assign bus = en_read_alu      ? alu
+	           : en_read_external ? external_value
+	           : en_read_a        ? a.value
+	           : en_read_pc       ? pc.value
+	           : en_read_instr    ? { 4'b0, instr.value[3:0] }
+	           : en_read_mem      ? m.last_read
+	           : 0;
 
 	assign
 		{
