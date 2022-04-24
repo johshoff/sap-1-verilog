@@ -3,8 +3,8 @@
 EXAMPLES=$(wildcard examples/*.s)
 EXAMPLE_BUILDS=$(EXAMPLES:examples/%.s=build/%.hex)
 
-run: cpu_inputs build/fib.hex build/cpu.vvp
-	./build/cpu.vvp
+test: build/tb_cpu.vvp cpu_inputs build/fib.hex
+	./$<
 
 all: $(EXAMPLE_BUILDS) cpu_inputs
 
@@ -18,6 +18,9 @@ build/instruction_rom.bin: make_micro_instr.py
 
 $(EXAMPLE_BUILDS): build/%.hex: examples/%.s
 	python3 assemble.py < $< > $@
+
+build/tb_cpu.vvp: tb_cpu.v cpu.v
+	iverilog -o $@ $^
 
 build/%.vvp: %.v
 	iverilog -o $@ $<
