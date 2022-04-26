@@ -5,13 +5,9 @@ module register(
 	input wire clk,
 	input wire reset,
 	input wire en_write,
-	input wire en_read
+	output reg [7:0] value
 
 );
-	reg [7:0] value;
-
-	assign bus = en_read ? value : 'bz;
-
 	always @(posedge clk)
 		if (reset) value <= 0;
 		else if (en_write) value <= bus;
@@ -22,12 +18,11 @@ module memory(
 	input wire clk,
 	input wire reset,
 	input wire en_write_mem,
-	input wire en_read_mem,
-	input wire en_write_mem_adr
+	input wire en_write_mem_adr,
+	output reg [7:0] last_read
 );
 	reg [3:0] address_register;
 	reg [7:0] data[0:15];
-	reg [7:0] last_read;
 
 	always @(posedge clk) begin
 		if (reset) address_register <= 0; // zeroing address, but not memory
@@ -36,9 +31,8 @@ module memory(
 	end
 
 	always @(*)
-		if (en_read_mem) last_read <= data[address_register];
+		last_read <= data[address_register];
 
-	assign bus = en_read_mem ? last_read : 'bz;
 endmodule
 
 module rom(
@@ -108,15 +102,21 @@ module machine(
 	reg last_zero;
 	reg last_carry;
 
+	wire [7:0] out_mem;
+	wire [7:0] out_reg_a;
+	wire [7:0] out_reg_b; // never read
+	wire [7:0] out_reg_pc;
+	wire [7:0] out_reg_instr;
+
 	micro_instr_counter mc(clk, reset | micro_done, micro_counter);
 
-	register a(bus, clk, reset, en_write_a, en_read_a);
-	register b(bus, clk, reset, en_write_b, 1'b0); // never read
-	register out(bus, clk, reset, en_write_out, 1'b0);
-	register pc(bus, clk, reset, en_write_pc, en_read_pc);
-	register instr(instr_bus, clk, reset, en_write_instr, en_read_instr);
+	register a    (bus,       clk, reset, en_write_a,     out_reg_a);
+	register b    (bus,       clk, reset, en_write_b,     out_reg_b);
+	register out  (bus,       clk, reset, en_write_out,   out_reg_out);
+	register pc   (bus,       clk, reset, en_write_pc,    out_reg_pc);
+	register instr(instr_bus, clk, reset, en_write_instr, out_reg_instr);
 
-	memory m(bus, clk, reset, en_write_mem, en_read_mem, en_write_mem_adr);
+	memory m(bus, clk, reset, en_write_mem, en_write_mem_adr, out_mem);
 	rom instr_decode({ last_carry, last_zero, instr.value[7:4], micro_counter }, micro);
 
 	add_carry adc(
@@ -126,11 +126,15 @@ module machine(
 		alu,
 		carry_out);
 
-	assign bus = en_read_external ? external_value : 'bz;
-	assign bus = en_read_alu      ? alu            : 'bz;
-
-	assign bus = en_read_instr ? { 4'b0, bus[3:0] } : 'bz;
-	assign instr_bus = en_write_instr ? bus : 'bz;
+	assign bus = en_read_external ? external_value
+	           : en_read_alu      ? alu
+	           : en_read_instr    ? { 4'b0, bus[3:0] }
+	           : en_read_mem      ? out_mem
+	           : en_read_a        ? out_reg_a
+	           : en_read_pc       ? out_reg_pc
+	           : en_read_instr    ? out_reg_instr
+	           : 0;
+	assign instr_bus = en_write_instr ? bus : 'b0;
 
 	assign
 		{
