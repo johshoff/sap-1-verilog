@@ -74,6 +74,7 @@ module machine(
 	input wire clk,
 	input wire en_read_external,
 	input wire [7:0] external_value,
+	output wire [7:0] out_reg_out,
 	output wire halted
 );
 	wire [7:0] bus;

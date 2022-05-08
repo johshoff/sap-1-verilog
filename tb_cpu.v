@@ -10,9 +10,10 @@ module tb_cpu();
 	reg [7:0] external_value = 0;
 	reg en_read_external = 0;
 	wire halted;
+	wire [7:0] out_reg;
 
 	clock c(clk);
-	machine m(clk, en_read_external, external_value, halted);
+	machine m(clk, en_read_external, external_value, out_reg, halted);
 
 	initial begin
 		// "program" the RAM
@@ -22,7 +23,7 @@ module tb_cpu();
 		m.reset <= 1;
 		@(posedge clk);
 		m.reset <= 0;
-		$monitor("OUT ", m.out.value);
+		$monitor("OUT ", out_reg);
 
 		for (integer i=0; i<50000; i=i+1) begin
 			//if (m.micro_counter == 0)
