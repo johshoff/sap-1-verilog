@@ -17,7 +17,7 @@ build/instruction_rom.bin: make_micro_instr.py
 	python3 make_micro_instr.py > build/instruction_rom.bin
 
 $(EXAMPLE_BUILDS): build/%.hex: examples/%.s
-	python3 assemble.py < $< > $@
+	python3 assemble.py -o $@ $<
 
 build/tb_cpu.vvp: tb_cpu.v cpu.v
 	iverilog -o $@ $^

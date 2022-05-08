@@ -1,9 +1,17 @@
 import sys
+import argparse
 
 VALUE = 0
 LABEL = 1
 
 PROG_SIZE = 16
+
+parser = argparse.ArgumentParser(description='Assemble a program')
+parser.add_argument('infile', type=open, nargs='?', default=sys.stdin,
+					help='Assembly input file, default stdin')
+parser.add_argument('-o', dest='outfile', type=str, default=sys.stdout,
+					help='The output hex file, default stdout')
+args = parser.parse_args()
 
 def decode_value(text):
 	if text.isdigit():
@@ -58,7 +66,7 @@ def parse_instruction(text):
 
 encoders = []
 labels = {}
-for line in sys.stdin:
+for line in args.infile:
 	line = line.rstrip()
 	if line == '':
 		continue
@@ -78,6 +86,9 @@ if len(encoders) > PROG_SIZE:
 	sys.exit(1)
 encoders.extend([0] * (PROG_SIZE - len(encoders)))
 
+# lazily open outfile, so we don't touch it on error
+out = open(args.outfile, 'w') if type(args.outfile) is str else args.outfile
+
 for encoder in encoders:
 	encoded = encoder if (type(encoder) == int) else encoder(labels)
-	print(f'{encoded:02x}')
+	print(f'{encoded:02x}', file=out)
