@@ -1,10 +1,14 @@
 .SUFFIXES: .hex
+SHELL:=/bin/bash
 
 EXAMPLES=$(wildcard examples/*.s)
 EXAMPLE_BUILDS=$(EXAMPLES:examples/%.s=build/%.hex)
 
-test: build/tb_cpu.vvp cpu_inputs build/fib.hex
+run: build/tb_cpu.vvp cpu_inputs build/fib.hex
 	./$<
+
+verify: build/tb_cpu.vvp cpu_inputs build/fib.hex
+	diff <(./$< | awk '/^OUT / {print $$2}') examples/fib.out
 
 all: $(EXAMPLE_BUILDS) cpu_inputs
 
