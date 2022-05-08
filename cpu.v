@@ -102,7 +102,6 @@ module machine(
 	output wire halted
 );
 	wire [7:0] bus;
-	wire [7:0] instr_bus; // intermediate bus for instructions for masking
 	wire [7:0] alu;
 	wire [15:0] micro;
 	wire [2:0] micro_counter;
@@ -135,11 +134,11 @@ module machine(
 
 	micro_instr_counter mc(clk, reset | micro_done, micro_counter);
 
-	register a    (bus,       clk, reset, en_write_a,     out_reg_a);
-	register b    (bus,       clk, reset, en_write_b,     out_reg_b);
-	register out  (bus,       clk, reset, en_write_out,   out_reg_out);
-	register instr(instr_bus, clk, reset, en_write_instr, out_reg_instr);
-	registerpc pc (bus,       clk, reset, en_write_pc,    en_increment_pc, out_reg_pc);
+	register a    (bus, clk, reset, en_write_a,     out_reg_a);
+	register b    (bus, clk, reset, en_write_b,     out_reg_b);
+	register out  (bus, clk, reset, en_write_out,   out_reg_out);
+	register instr(bus, clk, reset, en_write_instr, out_reg_instr);
+	registerpc pc (bus, clk, reset, en_write_pc,    en_increment_pc, out_reg_pc);
 
 	memory m(bus, clk, reset, en_write_mem, en_write_mem_adr, out_mem);
 	rom instr_decode({ last_carry, last_zero, out_reg_instr[7:4], micro_counter }, micro);
@@ -153,13 +152,11 @@ module machine(
 
 	assign bus = en_read_external ? external_value
 	           : en_read_alu      ? alu
-	           : en_read_instr    ? { 4'b0, bus[3:0] }
+	           : en_read_instr    ? { 4'b0, out_reg_instr[3:0] }
 	           : en_read_mem      ? out_mem
 	           : en_read_a        ? out_reg_a
 	           : en_read_pc       ? out_reg_pc
-	           : en_read_instr    ? out_reg_instr
 	           : 0;
-	assign instr_bus = en_write_instr ? bus : 'b0;
 
 	assign
 		{
