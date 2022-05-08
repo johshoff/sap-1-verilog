@@ -16,8 +16,8 @@ module tb_cpu();
 	machine m(clk, en_read_external, external_value, out_reg, halted);
 
 	initial begin
-		// "program" the RAM
-		$readmemh("build/fib.hex", m.m.data);
+		// optionally overwrite the program in RAM
+		//$readmemh("build/largest_divisor.hex", m.m.data);
 
 		// reset (RAM will be untouched)
 		m.reset <= 1;

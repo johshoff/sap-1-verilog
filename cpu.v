@@ -13,6 +13,21 @@ module register(
 		else if (en_write) value <= bus;
 endmodule
 
+module registerpc(
+	inout wire [7:0] bus,
+	input wire clk,
+	input wire reset,
+	input wire en_write,
+	input wire en_increment_pc,
+	output reg [7:0] value
+
+);
+	always @(posedge clk)
+		if (reset) value <= 0;
+		else if (en_increment_pc) value <= value + 1;
+		else if (en_write) value <= bus;
+endmodule
+
 module memory(
 	inout wire [7:0] bus,
 	input wire clk,
@@ -33,6 +48,10 @@ module memory(
 	always @(*)
 		last_read <= data[address_register];
 
+	initial begin
+		// add a default program to RAM
+		$readmemh("build/fib.hex", data);
+	end
 endmodule
 
 module rom(
@@ -43,6 +62,11 @@ module rom(
 
 	always @(*)
 		out <= data[address];
+
+	initial begin
+		// "program" the ROM
+		$readmemb("build/instruction_rom.bin", data);
+	end
 endmodule
 
 module micro_instr_counter(
@@ -114,15 +138,15 @@ module machine(
 	register a    (bus,       clk, reset, en_write_a,     out_reg_a);
 	register b    (bus,       clk, reset, en_write_b,     out_reg_b);
 	register out  (bus,       clk, reset, en_write_out,   out_reg_out);
-	register pc   (bus,       clk, reset, en_write_pc,    out_reg_pc);
 	register instr(instr_bus, clk, reset, en_write_instr, out_reg_instr);
+	registerpc pc (bus,       clk, reset, en_write_pc,    en_increment_pc, out_reg_pc);
 
 	memory m(bus, clk, reset, en_write_mem, en_write_mem_adr, out_mem);
-	rom instr_decode({ last_carry, last_zero, instr.value[7:4], micro_counter }, micro);
+	rom instr_decode({ last_carry, last_zero, out_reg_instr[7:4], micro_counter }, micro);
 
 	add_carry adc(
-		a.value,
-		en_subtraction ? ~b.value : b.value,
+		out_reg_a,
+		en_subtraction ? ~out_reg_b : out_reg_b,
 		en_subtraction,
 		alu,
 		carry_out);
@@ -158,10 +182,6 @@ module machine(
 		} = micro;
 
 	always @(posedge clk) begin
-		if (en_increment_pc) pc.value <= pc.value + 1;
-	end
-
-	always @(posedge clk) begin
 		if (reset) begin
 			last_zero <= 0;
 			last_carry <= 0;
@@ -169,11 +189,6 @@ module machine(
 			last_zero <= alu == 0;
 			last_carry <= carry_out;
 		end
-	end
-
-	initial begin
-		// "program" the ROM
-		$readmemb("build/instruction_rom.bin", instr_decode.data);
 	end
 endmodule
 
