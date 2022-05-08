@@ -3,6 +3,8 @@ import sys
 VALUE = 0
 LABEL = 1
 
+PROG_SIZE = 16
+
 def decode_value(text):
 	if text.isdigit():
 		return (int(text), VALUE)
@@ -69,6 +71,12 @@ for line in sys.stdin:
 		encoders.extend(0 for _ in range(int(line.split()[1]) - len(encoders)))
 	else:
 		raise Exception('unable to decode line "%s"' % line)
+
+# make PROG_SIZE instructions are used; pad if necessary
+if len(encoders) > PROG_SIZE:
+	print("Program too big. Uses %d instructions. Max size %d" % (len(encoders), PROG_SIZE), file=sys.stderr)
+	sys.exit(1)
+encoders.extend([0] * (PROG_SIZE - len(encoders)))
 
 for encoder in encoders:
 	encoded = encoder if (type(encoder) == int) else encoder(labels)
