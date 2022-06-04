@@ -1,5 +1,7 @@
 // an attempt to recreate Ben Eaters 8-bit computer in Verilog
 
+`default_nettype none
+
 module register(
 	inout wire [7:0] bus,
 	input wire clk,

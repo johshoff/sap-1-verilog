@@ -1,3 +1,5 @@
+`default_nettype none
+
 module clock(
 	output reg clk
 );
@@ -11,6 +13,7 @@ module tb_cpu();
 	reg en_read_external = 0;
 	wire halted;
 	wire [7:0] out_reg;
+	wire clk;
 
 	clock c(clk);
 	machine m(clk, en_read_external, external_value, out_reg, halted);
